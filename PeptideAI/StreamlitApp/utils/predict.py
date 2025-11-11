@@ -52,10 +52,8 @@ def load_model():
             model_url = os.environ.get("MODEL_URL")
 
         if model_url:
-            st.info("Model not found locally — downloading model from configured MODEL_URL...")
             try:
                 _download_file(model_url, str(model_path))
-                st.success("Model downloaded successfully.")
             except Exception as e:
                 st.error(f"Failed to download model from MODEL_URL: {e}")
                 raise
