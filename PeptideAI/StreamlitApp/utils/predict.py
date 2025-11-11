@@ -1,3 +1,6 @@
+import os
+import pathlib
+import requests
 import numpy as np
 import torch
 import streamlit as st
@@ -19,11 +22,51 @@ class FastMLP(nn.Module):
     def forward(self, x):
         return self.layers(x)
 
+# Utility: download file from URL to local path (streaming)
+def _download_file(url: str, dest_path: str):
+    dest = pathlib.Path(dest_path)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        with open(dest, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+
 # Model Loader
 @st.cache_resource
 def load_model():
+    model_path = pathlib.Path("./models/ampMLModel.pt")
+
+    # If the model file doesn't exist, try to download it from a configured URL
+    if not model_path.exists():
+
+        # Try Streamlit secrets first, then environment variable
+        model_url = None
+        try:
+            model_url = st.secrets.get("MODEL_URL")
+        except Exception:
+            model_url = None
+
+        if not model_url:
+            model_url = os.environ.get("MODEL_URL")
+
+        if model_url:
+            st.info("Model not found locally — downloading model from configured MODEL_URL...")
+            try:
+                _download_file(model_url, str(model_path))
+                st.success("Model downloaded successfully.")
+            except Exception as e:
+                st.error(f"Failed to download model from MODEL_URL: {e}")
+                raise
+        else:
+            raise FileNotFoundError(
+                "Model file './models/ampMLModel.pt' not found.\n"
+            )
+
+    # Build model and load weights
     model = FastMLP(input_dim=1024)
-    model.load_state_dict(torch.load("./models/ampMLModel.pt", map_location="cpu"))
+    model.load_state_dict(torch.load(str(model_path), map_location="cpu"))
     model.eval()
     return model
 
