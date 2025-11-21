@@ -1,0 +1,6 @@
+sdk: streamlit
+name: peptideai
+title: PeptideAI
+emoji: 🔬
+app_file: PeptideAI/StreamlitApp/StreamlitApp.py
+python_version: "3.13"
