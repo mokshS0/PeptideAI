@@ -1,0 +1,58 @@
+name: Sync with Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync-to-hub:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Upload non-binary files to Space (preserve manual uploads)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "huggingface_hub>=0.20.0"
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          
+          token = os.environ["HF_TOKEN"]
+          api = HfApi(token=token)
+          
+          # Upload everything except binaries / local-only / caches.
+          # No models are touched in models/ or any *.pt, so manual uploads remain.
+          api.upload_folder(
+              repo_id="m0ksh/PeptideAI-App",
+              repo_type="space",
+              folder_path=".",
+              path_in_repo="",
+              ignore_patterns=[
+                  ".git/**",
+                  ".github/**",
+                  ".vscode/**",
+                  "**/__pycache__/**",
+                  "**/*.pyc",
+                  "**/*.pt",
+                  "**/*.pth",
+                  "models/**",
+                  "MLModels/**",
+                  "StreamlitApp/models/**",
+              ],
+              commit_message="Sync from GitHub (preserve manual model files)",
+          )
+          print("Upload complete.")
+          PY

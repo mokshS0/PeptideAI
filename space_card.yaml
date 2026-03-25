@@ -1,0 +1,12 @@
+# Mirror of the YAML block at the top of README.md (Hugging Face Spaces reads README only).
+
+title: PeptideAI
+emoji: 🔬
+colorFrom: blue
+colorTo: purple
+sdk: streamlit
+sdk_version: "1.41.1"
+python_version: "3.13"
+app_file: StreamlitApp/StreamlitApp.py
+pinned: false
+short_description: AMP peptide scoring, composition, wheel & 3D views.

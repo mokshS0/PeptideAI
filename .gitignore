@@ -1,0 +1,10 @@
+.vscode/
+Data/**/*.tmp
+Data/**/*.log
+MLModels/**/*.pt
+MLModels/**/*.pth
+# Python bytecode (safe to ignore everywhere)
+__pycache__/
+*.py[cod]
+*$py.class
+StreamlitApp/models/*.pt
