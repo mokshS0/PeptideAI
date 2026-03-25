@@ -2,7 +2,7 @@
 from collections import Counter
 
 def aa_composition(sequence):
-    # Return normalized frequencies for the 20 canonical amino acids.
+    # Return normalized frequencies for the 20 canonical amino acids
     amino_acids = list("ACDEFGHIKLMNPQRSTVWY")
     counts = Counter(sequence)
     total = len(sequence)
