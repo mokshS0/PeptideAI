@@ -220,6 +220,7 @@ if page == "Predict":
             progress = st.progress(0.0)
             with st.spinner("Running prediction..."):
                 results = []
+                # Predict each sequence one-by-one so progress updates are accurate.
                 for i, seq in enumerate(sequences):
                     label, conf = predict_amp(seq, model)
                     conf_display = round(conf * 100, 1) if label == "AMP" else round((1 - conf) * 100, 1)
@@ -255,9 +256,9 @@ if page == "Predict":
                         _try_copy_to_clipboard(seq)
                         toast_fn = getattr(st, "toast", None)
                         if toast_fn is not None:
-                            toast_fn("Copied — or select the sequence above (Ctrl+C)")
+                            toast_fn("Copied, or select the sequence above (Ctrl+C)")
                         else:
-                            st.success("Copied — or select the sequence above (Ctrl+C)")
+                            st.success("Copied, or select the sequence above (Ctrl+C)")
                 label = top_candidate.get("Prediction", "")
                 conf_str = format_conf_percent(top_candidate["predicted_confidence"], digits=1)
                 st.write(f"**{label} with {conf_str} confidence**")
@@ -397,7 +398,7 @@ elif page == "Analyze":
             "</tr>"
             "</thead>"
             "<tbody>"
-            f"<tr><td style='padding:8px;'>{_html.escape('Length')}{_info_icon('Peptides with ~10–50 aa often balance membrane insertion and solubility.')}</td><td style='padding:8px; text-align:right;'>{_html.escape(str(length))}</td><td style='padding:8px;'>{_html.escape(favorability['Length'])}</td></tr>"
+            f"<tr><td style='padding:8px;'>{_html.escape('Length')}{_info_icon('Peptides with ~10-50 aa often balance membrane insertion and solubility.')}</td><td style='padding:8px; text-align:right;'>{_html.escape(str(length))}</td><td style='padding:8px;'>{_html.escape(favorability['Length'])}</td></tr>"
             f"<tr><td style='padding:8px;'>{hydro_label}</td><td style='padding:8px; text-align:right;'>{_html.escape(str(hydro))}</td><td style='padding:8px;'>{_html.escape(favorability['Hydrophobic Fraction'])}</td></tr>"
             f"<tr><td style='padding:8px;'>{charge_label}</td><td style='padding:8px; text-align:right;'>{_html.escape(str(charge))}</td><td style='padding:8px;'>{_html.escape(favorability['Net Charge'])}</td></tr>"
             f"<tr><td style='padding:8px;'>{_html.escape('Molecular Weight')}{_info_icon('Moderate molecular weight can help stability and binding; extremes may hurt performance.')}</td><td style='padding:8px; text-align:right;'>{_html.escape(str(mw))}</td><td style='padding:8px;'>{_html.escape(favorability['Molecular Weight'])}</td></tr>"
@@ -443,9 +444,9 @@ elif page == "Analyze":
                 if sim_score > 0.6:
                     st.success("High similarity to a known AMP in the reference set.")
                 elif sim_score > 0.3:
-                    st.warning("Moderate similarity — interpret with care.")
+                    st.warning("Moderate similarity, interpret with care.")
                 else:
-                    st.error("Low similarity — sequence is distant from reference AMPs.")
+                    st.error("Low similarity, sequence is distant from reference AMPs.")
             else:
                 st.warning("Could not compute similarity.")
         else:
@@ -539,9 +540,9 @@ elif page == "Optimize":
         col_results, col_opt_summary = st.columns(2)
         with col_results:
             st.subheader("Results")
-            st.write(f"**Original Sequence:** {orig_seq} — Confidence: {round(orig_conf*100,1)}%")
+            st.write(f"**Original Sequence:** {orig_seq}, Confidence: {round(orig_conf*100,1)}%")
             st.write(
-                f"**Optimized Sequence:** {improved_seq} — Confidence: {round(improved_conf*100,1)}%"
+                f"**Optimized Sequence:** {improved_seq}, Confidence: {round(improved_conf*100,1)}%"
             )
         with col_opt_summary:
             st.subheader("Optimization Summary")
@@ -611,6 +612,7 @@ elif page == "Visualize":
                     "Same helix geometry as the wheel (approximation only)."
                 )
                 if len(clean_viz) <= MAX_3D_SEQUENCE_LENGTH:
+                    # Render the same geometry two ways (interactive Plotly vs py3Dmol).
                     tab_pl, tab_mol = st.tabs(["Plotly 3D", "3Dmol viewer"])
                     with tab_pl:
                         if not render_3d_plotly(clean_viz):
@@ -628,6 +630,7 @@ elif page == "Visualize":
                 st.caption(
                     "Radial spokes per residue, black connectors along the sequence, colored disks (same scheme as 3D)."
                 )
+                # The wheel uses the same 100-degree/step geometry as the 3D view.
                 fig_wheel = plot_helical_wheel(clean_viz)
                 st.pyplot(fig_wheel, use_container_width=True)
                 plt.close(fig_wheel)
@@ -637,6 +640,7 @@ elif page == "Visualize":
             st.divider()
             st.subheader("Functional region map")
             st.caption("Residue-level chemistry; colors align with the 3D view and wheel.")
+            # Inline map shows residue classes (blue/red/green/gray) letter-by-letter.
             st.markdown(build_importance_map_html(clean_viz), unsafe_allow_html=True)
             with st.expander("Map · legend", expanded=False):
                 st.markdown(COMPACT_MAP_LEGEND)
@@ -644,7 +648,7 @@ elif page == "Visualize":
             st.divider()
             st.subheader("How this visualization helps (shape & AMP context)")
             st.caption(
-                "Heuristic readout from the **helix wheel geometry** and residue classes—use with the classifier, not instead of experiments."
+                "Heuristic readout from the **helix wheel geometry** and residue classes. Use it with the classifier, not instead of experiments."
             )
             v_label, v_conf = predict_amp(clean_viz, model)
             for line in build_shape_visual_summary(clean_viz, amp_label=v_label, amp_prob=v_conf):
@@ -682,6 +686,7 @@ elif page == "t-SNE":
                 # Use penultimate model representation as embedding features.
                 embedding_extractor = torch.nn.Sequential(*list(model.layers)[:-1])
 
+                    # Build embeddings, then predict label/conf for each sequence (for hover + coloring).
                 for i, s in enumerate(sequences):
                     x = torch.tensor(encode_sequence(s), dtype=torch.float32).unsqueeze(0)
                     with torch.no_grad():
@@ -698,6 +703,7 @@ elif page == "t-SNE":
 
                 embeddings_array = np.stack(embeddings_list)
                 perplexity = min(30, max(2, len(sequences) - 1))
+                # TSNE turns the high-dimensional embedding into a 2D map for exploration.
                 tsne = TSNE(n_components=2, random_state=42, perplexity=perplexity)
                 reduced = tsne.fit_transform(embeddings_array)
 
@@ -754,11 +760,9 @@ elif page == "About":
     st.markdown("""
 PeptideAI is a lightweight Streamlit app for exploring antimicrobial peptide (AMP) sequences.
 
-A hosted copy may be available at [Hugging Face Spaces](https://huggingface.co/spaces/m0ksh/PeptideAI).
-
 It uses a trained neural network to estimate whether a peptide is likely to be antimicrobial, then helps you interpret and improve candidates:
 - **AMP Predictor**: batch predictions from multi-line or FASTA input, length warnings, persisted results, top-candidate highlight, and CSV export.
-- **Peptide Analyzer**: single-sequence numerical and textual analysis — AMP prediction, composition, physicochemical table + radar, similarity to known AMPs, and report export.
+- **Peptide Analyzer**: single-sequence numerical and textual analysis, AMP prediction, composition, physicochemical table + radar, similarity to known AMPs, and report export.
 - **Peptide Optimizer**: guided sequence optimization with Enter-to-run input, mutation heatmap, step table, and confidence-vs-step trend.
 - **Visualize**: Plotly 3D backbone + optional 3Dmol view, helical wheel, functional map, and shape-focused AMP context summary.
 - **t-SNE**: upload many sequences, embed with the model, run t-SNE, and explore clusters with filters and hover metadata.

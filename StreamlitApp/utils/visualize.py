@@ -70,13 +70,13 @@ STRUCTURE_3D_LEGEND_MARKDOWN: str = """
 STRUCTURE_3D_INTERPRETATION_MARKDOWN: str = """
 **Structural interpretation (approximation only)**
 
-This is a **simplified helical CA trace** used to visualize how residue chemistry is arranged in 3D space — **not** an experimentally determined fold.
+This is a **simplified helical CA trace** used to visualize how residue chemistry is arranged in 3D space, **not** an experimentally determined fold.
 
 - **Clusters of green** often correspond to membrane-facing / hydrophobic patches.  
 - **Blue regions** highlight cationic residues that can promote binding to anionic bacterial surfaces.  
 - **Spatial separation** between hydrophobic and charged segments can suggest **amphipathic** character, common among many AMPs.  
 
-Together, these cues help discuss whether a sequence has motifs frequently associated with antimicrobial peptides — **wet-lab validation is still required**.
+Together, these cues help discuss whether a sequence has motifs frequently associated with antimicrobial peptides, **wet-lab validation is still required**.
 """
 
 # One-letter -> three-letter (for minimal PDB lines for py3Dmol).
@@ -157,10 +157,10 @@ def residue_color_mpl(aa: str) -> str:
 
 HELIX_WHEEL_LEGEND_MARKDOWN: str = """
 **Helical wheel readout**
-- **Blue wedge:** cationic (K, R, H) — often important for initial membrane association.  
+- **Blue wedge:** cationic (K, R, H), often important for initial membrane association.  
 - **Red wedge:** anionic (D, E).  
-- **Green wedge:** hydrophobic — often grouped on one face in amphipathic helices (membrane-facing).  
-- **Gray:** polar / other — may participate in solubility or hydrogen bonding.  
+- **Green wedge:** hydrophobic, often grouped on one face in amphipathic helices (membrane-facing).  
+- **Gray:** polar / other, may participate in solubility or hydrogen bonding.  
 
 Residues are placed using a **100° step** per position (common α-helical wheel convention). This is a **2D projection**, not a solved 3D structure.
 """
@@ -229,7 +229,7 @@ def plot_helical_wheel(sequence: str, figsize: Tuple[float, float] = (6.2, 6.2))
             zorder=1,
         )
 
-    # Sequence-order connections (straight chords in the plane — classic wheel “star”)
+    # Sequence-order connections (straight chords in the plane, classic wheel “star”)
     for i in range(n - 1):
         ax.plot(
             [angles_rad[i], angles_rad[i + 1]],
@@ -253,6 +253,7 @@ def plot_helical_wheel(sequence: str, figsize: Tuple[float, float] = (6.2, 6.2))
     )
 
     for i, aa in enumerate(clean):
+        # Put residue letters on the wheel so users can visually match positions.
         t = ax.text(
             angles_rad[i],
             r_ring,
@@ -271,7 +272,7 @@ def plot_helical_wheel(sequence: str, figsize: Tuple[float, float] = (6.2, 6.2))
     ax.set_xticklabels([])
     ax.grid(False)
     ax.set_title(
-        "Helical wheel (α-helix, 100°/residue) — spokes + sequence connectors",
+        "Helical wheel (α-helix, 100°/residue), spokes + sequence connectors",
         pad=14,
         fontsize=11,
         color="#111111",
@@ -327,6 +328,7 @@ def helix_coordinates(sequence: str, *, smooth: bool = False) -> np.ndarray:
         coords.append((x, y, z))
 
     if smooth and n >= 3:
+        # Light smoothing makes the 3D backbone look less jagged.
         xs = np.array([c[0] for c in coords], dtype=float)
         ys = np.array([c[1] for c in coords], dtype=float)
         zs = np.array([c[2] for c in coords], dtype=float)
@@ -408,6 +410,7 @@ def build_shape_visual_summary(
     hyd_i = [i for i, aa in enumerate(clean) if get_residue_color(aa) == "green"]
     pol_i = [i for i, aa in enumerate(clean) if get_residue_color(aa) == "gray"]
 
+    # Fractions and resultant scores describe how residues are distributed on the helix face.
     f_h = len(hyd_i) / n
     f_p = len(pol_i) / n
     f_pos = len(pos_i) / n
@@ -417,7 +420,7 @@ def build_shape_visual_summary(
 
     if f_h >= 0.18 and f_p >= 0.12:
         lines.append(
-            "You can point to **both** a **hydrophobic** (green) and **polar / other** (gray) presence along the trace—"
+            "You can point to **both** a **hydrophobic** (green) and **polar / other** (gray) presence along the trace,"
             "a common ingredient for **interface** behavior (aqueous vs lipid-facing), which many AMP mechanisms exploit."
         )
     elif f_h >= 0.25 and f_p < 0.1:
@@ -427,24 +430,24 @@ def build_shape_visual_summary(
         )
     elif f_p >= 0.35 and f_h < 0.15:
         lines.append(
-            "The trace is **rich in polar / other** (gray) and light on hydrophobic (green) packing—often more soluble, "
+            "The trace is **rich in polar / other** (gray) and light on hydrophobic (green) packing, often more soluble, "
             "but less like a compact amphipathic helix unless charge or hydrophobic content appears elsewhere."
         )
 
     if len(hyd_i) >= 3 and R_h >= 0.52:
         lines.append(
-            "**Hydrophobic residues cluster on one side** of the helical wheel (tight arc)—consistent with an **amphipathic** "
+            "**Hydrophobic residues cluster on one side** of the helical wheel (tight arc), consistent with an **amphipathic** "
             "helix face that could sit at the **membrane interface**."
         )
     elif len(hyd_i) >= 2 and R_h < 0.35:
         lines.append(
-            "**Hydrophobic** (green) positions are **spread** around the wheel—less of a single membrane-facing stripe; "
+            "**Hydrophobic** (green) positions are **spread** around the wheel, less of a single membrane-facing stripe; "
             "some AMPs still look like this, but classic amphipathic faces are easier to see when green groups on one arc."
         )
 
     if len(pos_i) >= 2 and R_k >= 0.5:
         lines.append(
-            "**Cationic** (blue) residues group in angular space—helpful for a **localized positive patch** toward anionic lipids, "
+            "**Cationic** (blue) residues group in angular space, helpful for a **localized positive patch** toward anionic lipids, "
             "a pattern often discussed for membrane-targeting peptides."
         )
 
@@ -453,17 +456,17 @@ def build_shape_visual_summary(
         pred_conf = round(p * 100, 1) if amp_label == "AMP" else round((1.0 - p) * 100, 1)
         if amp_label == "AMP" and pred_conf >= 65:
             lines.append(
-                f"**Model:** AMP at **{pred_conf}%** confidence on this sequence—combined with the spatial pattern above, "
+                f"**Model:** AMP at **{pred_conf}%** confidence on this sequence, combined with the spatial pattern above, "
                 "use the plot to argue **where** positive charge and hydrophobic bulk sit relative to each other."
             )
         elif amp_label == "Non-AMP" and pred_conf >= 65:
             lines.append(
-                f"**Model:** Non-AMP at **{pred_conf}%** confidence—if the trace still **looks** amphipathic, treat that as "
+                f"**Model:** Non-AMP at **{pred_conf}%** confidence, if the trace still **looks** amphipathic, treat that as "
                 "**chemistry vs. classifier** tension worth testing in the lab, not proof of activity."
             )
         else:
             lines.append(
-                f"**Model:** **{amp_label}** (about **{pred_conf}%** on that call)—read the **shape** bullets as physical intuition; "
+                f"**Model:** **{amp_label}** (about **{pred_conf}%** on that call), read the **shape** bullets as physical intuition; "
                 "they do not override the model or experiments."
             )
 
@@ -508,6 +511,7 @@ def render_3d_plotly(
     text_pos = "top center" if len(clean) <= 24 else "middle center"
 
     fig = go.Figure()
+    # Backbone line trace follows the helix-like CA coordinates.
     fig.add_trace(
         go.Scatter3d(
             x=coords[:, 0],
@@ -519,6 +523,7 @@ def render_3d_plotly(
             showlegend=False,
         )
     )
+    # Markers trace shows residue chemistry colors (and letters for shorter sequences).
     fig.add_trace(
         go.Scatter3d(
             x=coords[:, 0],
@@ -598,6 +603,7 @@ def render_3d_structure(
             pass
 
         cyl_r = 0.34 if enhanced else 0.28
+        # Backbone cylinders connect consecutive residue positions.
         for i in range(len(coords) - 1):
             p0 = coords[i]
             p1 = coords[i + 1]
@@ -625,6 +631,7 @@ def render_3d_structure(
                     pass
 
         sphere_radius = 0.36 if enhanced else 0.32
+        # Residue spheres are colored by chemistry class (blue/red/green/gray).
         for i, aa in enumerate(clean):
             color = get_residue_color(aa)
             sel = {"resi": i + 1}
@@ -634,6 +641,7 @@ def render_3d_structure(
         max_labels = 60 if enhanced else 40
         label_every = max(1, (len(clean) + max_labels - 1) // max_labels)
         fs = 10 if enhanced else 9
+        # Add labels sparsely to keep the viewer readable on longer peptides.
         for i, aa in enumerate(clean):
             if i % label_every != 0:
                 continue

@@ -194,7 +194,7 @@ def sequence_health_label(conf_prob: float, charge: float, hydro_fraction: float
     return "Unlikely AMP", "#d62728"
 
 
-# Plain-language bullets for Analyze — rules of thumb, not a second model.
+# Plain-language bullets for Analyze, rules of thumb, not a second model.
 def build_analysis_insights(
     label: str,
     conf: float,
@@ -212,7 +212,7 @@ def build_analysis_insights(
     if label == "AMP":
         if pred_conf >= 80:
             lines.append(
-                f"Model: **AMP** with high confidence ({pred_conf}% on this prediction)—profile below explains typical mechanisms."
+                f"Model: **AMP** with high confidence ({pred_conf}% on this prediction). Profile below explains typical mechanisms."
             )
         elif pred_conf >= 60:
             lines.append(
@@ -225,7 +225,7 @@ def build_analysis_insights(
     else:
         if pred_conf >= 80:
             lines.append(
-                f"Model: **Non-AMP** with high confidence ({pred_conf}% on this prediction)—below are common reasons a sequence may not behave like a classic AMP."
+                f"Model: **Non-AMP** with high confidence ({pred_conf}% on this prediction). Below are common reasons a sequence may not behave like a classic AMP."
             )
         elif pred_conf >= 60:
             lines.append(
@@ -252,11 +252,11 @@ def build_analysis_insights(
             )
         if hydro > 0.65:
             lines.append(
-                "Very high **hydrophobic** content: risk of aggregation or poor **aqueous solubility** before the peptide can reach bacteria—delivery and effective concentration suffer."
+                "Very high **hydrophobic** content: risk of aggregation or poor **aqueous solubility** before the peptide can reach bacteria, delivery and effective concentration suffer."
             )
         if polar_frac < 0.12:
             lines.append(
-                "Few **polar / H-bonding** residues (S, T, N, Q, Y, C): weaker interfacial interactions with lipids and water at the membrane—many AMP mechanisms benefit from polar positioning at the interface."
+                "Few **polar / H-bonding** residues (S, T, N, Q, Y, C): weaker interfacial interactions with lipids and water at the membrane. Many AMP mechanisms benefit from polar positioning at the interface."
             )
         if basic_frac < 0.06 and charge < 2:
             lines.append(
@@ -273,7 +273,7 @@ def build_analysis_insights(
 
         if label == "Non-AMP" and charge >= 2 and 0.28 <= hydro <= 0.58:
             lines.append(
-                "**Note:** Charge and hydrophobic balance still look somewhat AMP-like—the model says Non-AMP, so treat this as a **disagreement** worth validating experimentally, not proof either way."
+                "**Note:** Charge and hydrophobic balance still look somewhat AMP-like; the model says Non-AMP. Treat this as a **disagreement** worth validating experimentally, not proof either way."
             )
 
     if label == "AMP" and pred_conf >= 65:
