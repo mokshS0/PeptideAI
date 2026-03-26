@@ -24,6 +24,7 @@ from utils.shared_ui import (
     build_analysis_insights,
     build_analysis_summary_text,
 )
+from utils.rate_limit import RateLimiter
 from utils.visualize import (
     KNOWN_AMPS,
     MAX_3D_SEQUENCE_LENGTH,
@@ -48,6 +49,25 @@ def _tooltip_label(label: str, tooltip_text: str) -> None:
     # Render a label with a lightweight HTML hover tooltip.
     safe = _html.escape(tooltip_text, quote=True)
     st.markdown(f"{label} <span title='{safe}' style='cursor:help;color:#666'>(i)</span>", unsafe_allow_html=True)
+
+
+def _session_rate_limiter(state_key: str, max_calls: int, period_seconds: float) -> RateLimiter:
+    # One limiter object per browser session (Streamlit reruns keep the same session_state).
+    if state_key not in st.session_state:
+        st.session_state[state_key] = RateLimiter(max_calls, period_seconds)
+    return st.session_state[state_key]
+
+
+def _rate_limit_ok(state_key: str, max_calls: int, period_seconds: float, action_label: str) -> bool:
+    rl = _session_rate_limiter(state_key, max_calls, period_seconds)
+    if rl.allow():
+        return True
+    wait = max(1.0, rl.time_until_next())
+    st.warning(
+        f"Rate limit: please wait **~{int(wait)}s** before another {action_label}. "
+        "(Light throttle on shared hosting.)"
+    )
+    return False
 
 
 def _try_copy_to_clipboard(text: str) -> None:
@@ -103,6 +123,7 @@ page = st.sidebar.radio(
         "About",
     ],
 )
+st.sidebar.caption("Light per-session rate limits apply on expensive model runs.")
 
 if st.sidebar.button("Clear All Fields"):
     # Reset only app-owned state keys, then rerun to refresh all widgets.
@@ -119,6 +140,8 @@ if st.sidebar.button("Clear All Fields"):
         "visualize_df",
         "visualize_peptide_input",
     ]
+    for rk in ("_rl_predict", "_rl_analyze", "_rl_optimize", "_rl_tsne"):
+        keys.append(rk)
     for k in keys:
         if k in st.session_state:
             del st.session_state[k]
@@ -191,6 +214,8 @@ if page == "Predict":
 
         if not sequences:
             st.warning("Please input or upload sequences first.")
+        elif not _rate_limit_ok("_rl_predict", 40, 60.0, "batch prediction"):
+            pass
         else:
             progress = st.progress(0.0)
             with st.spinner("Running prediction..."):
@@ -263,28 +288,31 @@ elif page == "Analyze":
 
     # Recompute only when sequence changes to avoid redundant work on reruns.
     if seq and seq != st.session_state.get("analyze_input", ""):
-        with st.spinner("Running analysis..."):
-            label, conf = predict_amp(seq, model)
-            conf_pct = round(conf * 100, 1)
-            conf_display = conf_pct if label == "AMP" else 100 - conf_pct
+        if not _rate_limit_ok("_rl_analyze", 35, 60.0, "analysis run"):
+            pass
+        else:
+            with st.spinner("Running analysis..."):
+                label, conf = predict_amp(seq, model)
+                conf_pct = round(conf * 100, 1)
+                conf_display = conf_pct if label == "AMP" else 100 - conf_pct
 
-            comp = aa_composition(seq)
-            props = compute_properties(seq)
+                comp = aa_composition(seq)
+                props = compute_properties(seq)
 
-            # Normalize property key variants returned by helper functions.
-            net_charge = props.get("Net Charge (approx.)",
-                                   props.get("Net charge", props.get("NetCharge", 0)))
-            
-            length = props.get("Length", len(seq))
-            hydro = props.get("Hydrophobic Fraction", props.get("Hydrophobic", 0))
-            charge = net_charge
-            mw = props.get("Molecular Weight (Da)", props.get("MolecularWeight", 0))
+                # Normalize property key variants returned by helper functions.
+                net_charge = props.get("Net Charge (approx.)",
+                                       props.get("Net charge", props.get("NetCharge", 0)))
 
-            analysis = build_analysis_insights(label, conf, comp, length, float(hydro), float(charge))
+                length = props.get("Length", len(seq))
+                hydro = props.get("Hydrophobic Fraction", props.get("Hydrophobic", 0))
+                charge = net_charge
+                mw = props.get("Molecular Weight (Da)", props.get("MolecularWeight", 0))
 
-            # Save computed payload for display + report exports below.
-            st.session_state.analyze_input = seq
-            st.session_state.analyze_output = (label, conf, conf_display, comp, props, analysis)
+                analysis = build_analysis_insights(label, conf, comp, length, float(hydro), float(charge))
+
+                # Save computed payload for display + report exports below.
+                st.session_state.analyze_input = seq
+                st.session_state.analyze_output = (label, conf, conf_display, comp, props, analysis)
 
     # Render last computed analysis block.
     if st.session_state.analyze_output:
@@ -490,14 +518,17 @@ elif page == "Optimize":
     # Re-run optimization when the entered sequence changes.
     if seq and str(seq).strip() and str(seq).strip() != st.session_state.get("optimize_last_ran_input", ""):
         seq = str(seq).strip()
-        st.session_state.optimize_last_ran_input = seq
-        progress = st.progress(0.0, text="Optimizing...")
-        with st.spinner("Optimizing sequence..."):
-            improved_seq, improved_conf, history = optimize_sequence(seq, model)
-            _ol, orig_conf = predict_amp(seq, model)
-            st.session_state.optimize_output = (seq, orig_conf, improved_seq, improved_conf, history)
-        progress.progress(1.0, text="Optimization complete")
-        st.success("Optimization finished.")
+        if not _rate_limit_ok("_rl_optimize", 12, 60.0, "optimization run"):
+            pass
+        else:
+            st.session_state.optimize_last_ran_input = seq
+            progress = st.progress(0.0, text="Optimizing...")
+            with st.spinner("Optimizing sequence..."):
+                improved_seq, improved_conf, history = optimize_sequence(seq, model)
+                _ol, orig_conf = predict_amp(seq, model)
+                st.session_state.optimize_output = (seq, orig_conf, improved_seq, improved_conf, history)
+            progress.progress(1.0, text="Optimization complete")
+            st.success("Optimization finished.")
 
     # Render latest optimization artifacts from session state.
     if st.session_state.optimize_output:
@@ -641,6 +672,8 @@ elif page == "t-SNE":
         sequences = st.session_state.visualize_sequences
         if len(sequences) < 2:
             st.warning("Need at least 2 sequences for t-SNE visualization.")
+        elif not _rate_limit_ok("_rl_tsne", 10, 120.0, "t-SNE embedding run"):
+            pass
         else:
             progress = st.progress(0.0, text="Generating embedding...")
             with st.spinner("Generating embedding..."):

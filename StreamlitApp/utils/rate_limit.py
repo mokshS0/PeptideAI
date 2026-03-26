@@ -1,4 +1,4 @@
-# Optional rate limiter (not wired to a sidebar page yet).
+# Simple per-session throttle for StreamlitApp (in-memory; per server process on HF).
 import time
 from collections import deque
 
