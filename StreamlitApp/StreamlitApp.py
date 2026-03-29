@@ -10,7 +10,7 @@ import html as _html
 from sklearn.manifold import TSNE
 
 # Utils map to sidebar pages: predict / analyze / optimize / visualize / tsne, plus shared_ui.
-from utils.predict import load_model, predict_amp, encode_sequence
+from utils.predict import load_model, predict_amp, encode_sequence, get_embedding_extractor
 from utils.analyze import aa_composition, compute_properties
 from utils.optimize import optimize_sequence
 from utils.shared_ui import (
@@ -684,11 +684,11 @@ elif page == "t-SNE":
                 embeddings_list, labels, confs, lengths, hydros, charges = [], [], [], [], [], []
 
                 # Use penultimate model representation as embedding features.
-                embedding_extractor = torch.nn.Sequential(*list(model.layers)[:-1])
+                embedding_extractor = get_embedding_extractor(model)
 
                     # Build embeddings, then predict label/conf for each sequence (for hover + coloring).
                 for i, s in enumerate(sequences):
-                    x = torch.tensor(encode_sequence(s), dtype=torch.float32).unsqueeze(0)
+                    x = torch.tensor(encode_sequence(s, model), dtype=torch.float32).unsqueeze(0)
                     with torch.no_grad():
                         emb = embedding_extractor(x).squeeze().numpy()
                     embeddings_list.append(emb)
