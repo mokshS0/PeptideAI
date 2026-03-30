@@ -79,7 +79,7 @@ def _try_copy_to_clipboard(text: str) -> None:
             pass
 
 # Configure global app layout once before rendering widgets.
-st.set_page_config(page_title="AMP Predictor", layout="wide")
+st.set_page_config(page_title="PeptideAI", layout="wide")
 
 # Global title shown above all pages.
 st.title("PeptideAI")
