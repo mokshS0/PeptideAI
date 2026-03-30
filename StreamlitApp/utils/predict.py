@@ -90,7 +90,13 @@ def load_model():
     classifier.eval()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = AutoTokenizer.from_pretrained(PROTBERT_MODEL_NAME)
+    # ProtBERT tokenizer may be slow-only depending on whether sentencepiece/tokenizers
+    # backends are available. Fall back to `use_fast=False` so Spaces can start.
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(PROTBERT_MODEL_NAME, use_fast=True)
+    except Exception:
+        tokenizer = AutoTokenizer.from_pretrained(PROTBERT_MODEL_NAME, use_fast=False)
+
     encoder = AutoModel.from_pretrained(PROTBERT_MODEL_NAME).to(device)
     encoder.eval()
 
