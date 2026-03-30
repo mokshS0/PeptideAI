@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import streamlit as st
 from torch import nn
-from transformers import AutoModel, AutoTokenizer
+from transformers import AutoModel, BertTokenizer
 
 
 MODEL_INPUT_DIM = 1024
@@ -90,12 +90,8 @@ def load_model():
     classifier.eval()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # ProtBERT tokenizer may be slow-only depending on whether sentencepiece/tokenizers
-    # backends are available. Fall back to `use_fast=False` so Spaces can start.
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(PROTBERT_MODEL_NAME, use_fast=True)
-    except Exception:
-        tokenizer = AutoTokenizer.from_pretrained(PROTBERT_MODEL_NAME, use_fast=False)
+    # Use an explicit slow tokenizer to avoid fast-backend conversion issues on Spaces.
+    tokenizer = BertTokenizer.from_pretrained(PROTBERT_MODEL_NAME, do_lower_case=False)
 
     encoder = AutoModel.from_pretrained(PROTBERT_MODEL_NAME).to(device)
     encoder.eval()
