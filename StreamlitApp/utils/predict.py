@@ -4,13 +4,11 @@ import numpy as np
 import torch
 import streamlit as st
 from torch import nn
-from transformers import AutoModel, BertTokenizer
-
+from transformers import BertModel, BertTokenizer
 
 MODEL_INPUT_DIM = 1024
 MODEL_ARCH = "FastMLP"
 PROTBERT_MODEL_NAME = "Rostlab/prot_bert"
-
 
 class FastMLP(nn.Module):
     def __init__(self, input_dim=MODEL_INPUT_DIM):
@@ -93,7 +91,8 @@ def load_model():
     # Use an explicit slow tokenizer to avoid fast-backend conversion issues on Spaces.
     tokenizer = BertTokenizer.from_pretrained(PROTBERT_MODEL_NAME, do_lower_case=False)
 
-    encoder = AutoModel.from_pretrained(PROTBERT_MODEL_NAME).to(device)
+    # Use explicit BERT class to avoid AutoModel config auto-detection issues.
+    encoder = BertModel.from_pretrained(PROTBERT_MODEL_NAME).to(device)
     encoder.eval()
 
     return {
