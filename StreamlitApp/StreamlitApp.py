@@ -99,6 +99,8 @@ if "analyze_output" not in st.session_state:
     st.session_state.analyze_output = None        # (label, conf_display, comp, props, analysis)
 if "optimize_input" not in st.session_state:
     st.session_state.optimize_input = ""          # last optimize input
+if "optimize_input_widget" not in st.session_state:
+    st.session_state.optimize_input_widget = st.session_state.optimize_input
 if "optimize_output" not in st.session_state:
     st.session_state.optimize_output = None       # (orig_seq, orig_conf, improved_seq, improved_conf, history)
 if "optimize_last_ran_input" not in st.session_state:
@@ -109,6 +111,8 @@ if "visualize_df" not in st.session_state:
     st.session_state.visualize_df = None
 if "visualize_peptide_input" not in st.session_state:
     st.session_state.visualize_peptide_input = ""
+if "visualize_peptide_input_widget" not in st.session_state:
+    st.session_state.visualize_peptide_input_widget = st.session_state.visualize_peptide_input
 
 # Sidebar route selector drives top-level page rendering.
 st.sidebar.header("Navigation")
@@ -134,11 +138,13 @@ if st.sidebar.button("Clear All Fields"):
         "analyze_input",
         "analyze_output",
         "optimize_input",
+        "optimize_input_widget",
         "optimize_output",
         "optimize_last_ran_input",
         "visualize_sequences",
         "visualize_df",
         "visualize_peptide_input",
+        "visualize_peptide_input_widget",
     ]
     for rk in ("_rl_predict", "_rl_analyze", "_rl_optimize", "_rl_tsne"):
         keys.append(rk)
@@ -507,10 +513,13 @@ elif page == "Optimize":
     st.header("Peptide Optimizer")
 
     with st.container(border=True):
-        seq = st.text_input(
+        st.text_input(
             "Enter a peptide sequence to optimize:",
-            key="optimize_input",
+            key="optimize_input_widget",
         )
+    seq = (st.session_state.get("optimize_input_widget") or "")
+    # Keep a stable saved value across page switches/reruns.
+    st.session_state.optimize_input = seq
 
     warn_opt = sequence_length_warning(seq) if seq else None
     if warn_opt:
@@ -588,9 +597,11 @@ elif page == "Visualize":
     with st.container(border=True):
         st.text_input(
             "Enter a peptide sequence to visualize:",
-            key="visualize_peptide_input",
+            key="visualize_peptide_input_widget",
         )
 
+    # Mirror widget value into a stable saved key for persistence parity with other pages.
+    st.session_state.visualize_peptide_input = st.session_state.get("visualize_peptide_input_widget", "")
     seq_viz = (st.session_state.get("visualize_peptide_input") or "").strip()
     clean_viz = "".join(c for c in seq_viz.upper() if not c.isspace())
     if clean_viz:
