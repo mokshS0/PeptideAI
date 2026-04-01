@@ -620,12 +620,15 @@ elif page == "Optimize":
             st.subheader("Mutation Steps")
             st.dataframe(df_steps, use_container_width=True)
 
-            # Trend line shows confidence gain over accepted mutation steps.
-            step_nums = df_steps["Step"].tolist()
-            conf_values = df_steps["New Confidence (%)"].tolist()
+            # Step 0 = original peptide AMP probability; steps 1+ match the table after each mutation.
+            step_nums = [0] + df_steps["Step"].tolist()
+            conf_values = [round(float(orig_conf) * 100, 2)] + df_steps["New Confidence (%)"].tolist()
             df_graph = pd.DataFrame({"Step": step_nums, "Confidence (%)": conf_values})
             fig = px.line(df_graph, x="Step", y="Confidence (%)", markers=True, color_discrete_sequence=["#457a00"])
-            fig.update_layout(yaxis=dict(range=[0, 100]), title="Confidence Improvement Over Steps")
+            fig.update_layout(
+                yaxis=dict(range=[0, 100]),
+                title="AMP model confidence (%) — step 0 = original, then each accepted change",
+            )
             st.plotly_chart(fig, use_container_width=True)
 
 # Visualize page: structural/sequence interpretation for one peptide.
