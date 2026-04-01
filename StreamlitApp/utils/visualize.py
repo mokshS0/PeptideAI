@@ -18,6 +18,7 @@ _FALLBACK_KNOWN_AMPS: Tuple[str, ...] = (
 )
 
 def _amp_data_csv_path() -> pathlib.Path:
+    # `Data/ampData.csv`: label=1 rows become KNOWN_AMPS for “similar AMP” lookup.
     # StreamlitApp/utils/visualize.py -> repo root is parents[2]
     return pathlib.Path(__file__).resolve().parents[2] / "Data" / "ampData.csv"
 
@@ -192,7 +193,7 @@ COMPACT_MAP_LEGEND: str = """
 
 
 def plot_helical_wheel(sequence: str, figsize: Tuple[float, float] = (6.2, 6.2)) -> Any:
-    # Build a detailed helical wheel with spokes, sequence connectors, and color-coded residues.
+    # Polar wheel: 100°/residue, same phase as `helix_coordinates` / 3D trace (not a solved structure).
     import matplotlib.pyplot as plt
     from matplotlib import patheffects as pe
 
@@ -388,6 +389,7 @@ def _helical_wheel_resultant(indices: List[int]) -> float:
     return float(math.hypot(vx, vy))
 
 
+# Heuristic bullets from wheel geometry + residue classes; not a second classifier.
 def build_shape_visual_summary(
     sequence: str,
     *,
@@ -485,7 +487,7 @@ def render_3d_plotly(
     *,
     height: int = 460,
 ) -> bool:
-    # Interactive 3D backbone (line + markers) 
+    # Plotly: CA helix trace + residue markers (same geometry as wheel / 3Dmol).
     try:
         import plotly.graph_objects as go
         import streamlit as st

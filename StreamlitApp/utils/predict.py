@@ -6,11 +6,12 @@ import streamlit as st
 from torch import nn
 from transformers import BertModel, BertTokenizer
 
-MODEL_INPUT_DIM = 1024
+MODEL_INPUT_DIM = 1024  # ProtBERT pooled embedding size; MLP first layer must match.
 MODEL_ARCH = "FastMLP"
-PROTBERT_MODEL_NAME = "Rostlab/prot_bert"
+PROTBERT_MODEL_NAME = "Rostlab/prot_bert"  # HF id for tokenizer + encoder weights.
 
 class FastMLP(nn.Module):
+    # Small classifier head on top of frozen ProtBERT embeddings at inference.
     def __init__(self, input_dim=MODEL_INPUT_DIM):
         super(FastMLP, self).__init__()
         self.layers = nn.Sequential(
@@ -40,6 +41,7 @@ def _load_checkpoint(path: pathlib.Path):
 
 
 def _infer_first_layer_input_dim(state_dict: dict) -> int | None:
+    # Infer MLP input dim from Linear weight shape (out_features, in_features).
     w = state_dict.get("layers.0.weight")
     if w is None:
         return None
@@ -49,6 +51,7 @@ def _infer_first_layer_input_dim(state_dict: dict) -> int | None:
 
 
 def _normalize_sequence(sequence: str) -> str:
+    # Uppercase + strip whitespace so tokenization matches training conventions.
     return "".join(c for c in str(sequence).upper() if not c.isspace())
 
 
@@ -64,6 +67,7 @@ def load_model():
         repo_root / "models" / "ampMLModel.pt",
         streamlitapp_dir / "models" / "ampMLModel.pt",
     ]
+    # Prefer first existing path so local / HF layouts both work.
     model_path = next((p for p in candidates if p.exists()), candidates[0])
 
     if not model_path.exists():
@@ -125,6 +129,7 @@ def encode_sequence(seq, model_bundle):
 
 
 def get_embedding_extractor(model_bundle):
+    # Penultimate MLP activations for t-SNE (same depth as training-time “embedding” use).
     classifier = model_bundle["classifier"]
     extractor = torch.nn.Sequential(*list(classifier.layers)[:-1])
     extractor.eval()

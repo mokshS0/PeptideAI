@@ -78,6 +78,24 @@ def _try_copy_to_clipboard(text: str) -> None:
         except Exception:
             pass
 
+
+# Widget keys are cleared when a page is not rendered; these copy text into plain session keys.
+def _sync_predict_input_saved():
+    st.session_state.predict_input_saved = st.session_state.get("predict_input_widget", "")
+
+
+def _sync_analyze_draft():
+    st.session_state.analyze_draft = st.session_state.get("analyze_input_widget", "")
+
+
+def _sync_optimize_input():
+    st.session_state.optimize_input = st.session_state.get("optimize_input_widget", "")
+
+
+def _sync_visualize_peptide_input():
+    st.session_state.visualize_peptide_input = st.session_state.get("visualize_peptide_input_widget", "")
+
+
 # Configure global app layout once before rendering widgets.
 st.set_page_config(page_title="PeptideAI", layout="wide")
 
@@ -91,16 +109,17 @@ if "predictions" not in st.session_state:
     st.session_state.predictions = []             # list of dicts
 if "predict_ran" not in st.session_state:
     st.session_state.predict_ran = False
-if "predict_input_widget" not in st.session_state:
-    st.session_state.predict_input_widget = ""
+# predict_input_saved: survives navigation when Streamlit strips widget keys.
+if "predict_input_saved" not in st.session_state:
+    st.session_state.predict_input_saved = ""
 if "analyze_input" not in st.session_state:
     st.session_state.analyze_input = ""           # last analyze input
+if "analyze_draft" not in st.session_state:
+    st.session_state.analyze_draft = ""            # typed analyze sequence (persists across pages)
 if "analyze_output" not in st.session_state:
     st.session_state.analyze_output = None        # (label, conf_display, comp, props, analysis)
 if "optimize_input" not in st.session_state:
-    st.session_state.optimize_input = ""          # last optimize input
-if "optimize_input_widget" not in st.session_state:
-    st.session_state.optimize_input_widget = st.session_state.optimize_input
+    st.session_state.optimize_input = ""          # last optimize sequence (persisted draft)
 if "optimize_output" not in st.session_state:
     st.session_state.optimize_output = None       # (orig_seq, orig_conf, improved_seq, improved_conf, history)
 if "optimize_last_ran_input" not in st.session_state:
@@ -111,8 +130,6 @@ if "visualize_df" not in st.session_state:
     st.session_state.visualize_df = None
 if "visualize_peptide_input" not in st.session_state:
     st.session_state.visualize_peptide_input = ""
-if "visualize_peptide_input_widget" not in st.session_state:
-    st.session_state.visualize_peptide_input_widget = st.session_state.visualize_peptide_input
 
 # Sidebar route selector drives top-level page rendering.
 st.sidebar.header("Navigation")
@@ -135,7 +152,10 @@ if st.sidebar.button("Clear All Fields"):
         "predictions",
         "predict_ran",
         "predict_input_widget",
+        "predict_input_saved",
         "analyze_input",
+        "analyze_draft",
+        "analyze_input_widget",
         "analyze_output",
         "optimize_input",
         "optimize_input_widget",
@@ -182,18 +202,28 @@ if page == "Predict":
     preset_cols = st.columns(2)
     with preset_cols[0]:
         if st.button("Use strong AMP example"):
-            st.session_state.predict_input_widget = "RGGRLCYCRGWICFCVGR"
+            ex = "RGGRLCYCRGWICFCVGR"
+            st.session_state.predict_input_widget = ex
+            st.session_state.predict_input_saved = ex
             st.rerun()
     with preset_cols[1]:
         if st.button("Use weak sequence example"):
-            st.session_state.predict_input_widget = "KAEEEVEKNKEEAEEKAEKKIAE"
+            ex = "KAEEEVEKNKEEAEEKAEKKIAE"
+            st.session_state.predict_input_widget = ex
+            st.session_state.predict_input_saved = ex
             st.rerun()
+
+    # Restore textarea after navigating away (widget key may have been dropped).
+    if "predict_input_widget" not in st.session_state:
+        st.session_state.predict_input_widget = st.session_state.predict_input_saved
 
     seq_input = st.text_area(
         "Enter peptide sequences (one per line):",
         height=150,
         key="predict_input_widget",
+        on_change=_sync_predict_input_saved,
     )
+    _sync_predict_input_saved()
     uploaded_file = st.file_uploader("Or upload a FASTA/text file", type=["txt", "fasta"])
 
     # Show quick length guidance before running the model.
@@ -282,12 +312,16 @@ elif page == "Analyze":
 
     # Match optimizer-like boxed input style for consistent UI spacing.
     with st.container(border=True):
-        # Seed input with previous analyzed sequence for quick iteration.
-        last_seq = st.session_state.analyze_input
-        seq = st.text_input(
+        if "analyze_input_widget" not in st.session_state:
+            init = st.session_state.analyze_draft or st.session_state.analyze_input
+            st.session_state.analyze_input_widget = init
+        st.text_input(
             "Enter a peptide sequence to analyze:",
-            value=last_seq,
+            key="analyze_input_widget",
+            on_change=_sync_analyze_draft,
         )
+        _sync_analyze_draft()
+    seq = st.session_state.analyze_draft
 
     warn = sequence_length_warning(seq)
     if warn:
@@ -319,6 +353,7 @@ elif page == "Analyze":
 
                 # Save computed payload for display + report exports below.
                 st.session_state.analyze_input = seq
+                st.session_state.analyze_draft = seq
                 st.session_state.analyze_output = (label, conf, conf_display, comp, props, analysis)
 
     # Render last computed analysis block.
@@ -513,13 +548,15 @@ elif page == "Optimize":
     st.header("Peptide Optimizer")
 
     with st.container(border=True):
+        if "optimize_input_widget" not in st.session_state:
+            st.session_state.optimize_input_widget = st.session_state.optimize_input
         st.text_input(
             "Enter a peptide sequence to optimize:",
             key="optimize_input_widget",
+            on_change=_sync_optimize_input,
         )
-    seq = (st.session_state.get("optimize_input_widget") or "")
-    # Keep a stable saved value across page switches/reruns.
-    st.session_state.optimize_input = seq
+        _sync_optimize_input()
+    seq = st.session_state.optimize_input
 
     warn_opt = sequence_length_warning(seq) if seq else None
     if warn_opt:
@@ -595,13 +632,14 @@ elif page == "Optimize":
 elif page == "Visualize":
     st.header("Peptide Visualizer")
     with st.container(border=True):
+        if "visualize_peptide_input_widget" not in st.session_state:
+            st.session_state.visualize_peptide_input_widget = st.session_state.visualize_peptide_input
         st.text_input(
             "Enter a peptide sequence to visualize:",
             key="visualize_peptide_input_widget",
+            on_change=_sync_visualize_peptide_input,
         )
-
-    # Mirror widget value into a stable saved key for persistence parity with other pages.
-    st.session_state.visualize_peptide_input = st.session_state.get("visualize_peptide_input_widget", "")
+        _sync_visualize_peptide_input()
     seq_viz = (st.session_state.get("visualize_peptide_input") or "").strip()
     clean_viz = "".join(c for c in seq_viz.upper() if not c.isspace())
     if clean_viz:

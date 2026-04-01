@@ -1,9 +1,5 @@
-"""
-Train AMP classifier on ProtBERT embeddings for deployment.
-
-Produces an MLP checkpoint compatible with StreamlitApp/utils/predict.py,
-which performs ProtBERT mean-pooled embedding at inference.
-"""
+# Train AMP classifier on ProtBERT embeddings; export MLP weights for Streamlit `load_model`.
+# Inference in Streamlit uses BertTokenizer + BertModel + same mean-pool as here.
 
 from __future__ import annotations
 
@@ -19,11 +15,12 @@ from torch import nn, optim
 from transformers import AutoModel, AutoTokenizer
 
 
-MODEL_NAME = "Rostlab/prot_bert"
-INPUT_DIM = 1024
+MODEL_NAME = "Rostlab/prot_bert"  # Same HF id as Streamlit `PROTBERT_MODEL_NAME`.
+INPUT_DIM = 1024  # Mean-pooled ProtBERT last_hidden_state dim.
 
 
 class FastMLP(nn.Module):
+    # Binary head; Streamlit loads these weights only (encoder pulled separately).
     def __init__(self, input_dim: int = INPUT_DIM):
         super().__init__()
         self.layers = nn.Sequential(
@@ -40,10 +37,12 @@ class FastMLP(nn.Module):
 
 
 def _normalize(seq: str) -> str:
+    # Match app-side `_normalize_sequence` (uppercase, no spaces).
     return "".join(c for c in str(seq).upper() if not c.isspace())
 
 
 def get_embedding(sequence: str, tokenizer, encoder, device) -> np.ndarray:
+    # Space-separated residues: ProtBERT tokenizer expects word-piece style input.
     spaced = " ".join(list(_normalize(sequence)))
     tokens = tokenizer(spaced, return_tensors="pt", truncation=True, padding=True).to(device)
     with torch.no_grad():
@@ -53,6 +52,7 @@ def get_embedding(sequence: str, tokenizer, encoder, device) -> np.ndarray:
 
 
 def load_dataset(csv_path: pathlib.Path) -> pd.DataFrame:
+    # Expected columns: sequence (str), label (0/1).
     df = pd.read_csv(csv_path)
     if "sequence" not in df.columns or "label" not in df.columns:
         raise ValueError("CSV must include 'sequence' and 'label' columns.")
@@ -96,7 +96,7 @@ def main():
     y_train_t = torch.tensor(y_train, dtype=torch.float32, device=device).unsqueeze(1)
 
     model = FastMLP(input_dim=INPUT_DIM).to(device)
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCEWithLogitsLoss()  # logits; sigmoid applied only for metrics / deployment.
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     for epoch in range(args.epochs):
@@ -123,6 +123,7 @@ def main():
     print("\nClassification report:\n")
     print(classification_report(y_test.astype(int), pred_labels, digits=4))
 
+    # Classifier-only checkpoint; ProtBERT weights are always loaded from HF at inference.
     checkpoint = {
         "state_dict": model.cpu().state_dict(),
         "meta": {

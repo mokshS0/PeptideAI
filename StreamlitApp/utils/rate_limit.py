@@ -12,7 +12,7 @@ class RateLimiter:
     def allow(self) -> bool:
         now = time.time()
 
-        # Drop timestamps outside the active window.
+        # Sliding window: drop calls older than `period` seconds.
         while self.calls and self.calls[0] <= now - self.period:
             self.calls.popleft()
         if len(self.calls) < self.max_calls:

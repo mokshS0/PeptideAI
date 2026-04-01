@@ -1,4 +1,5 @@
 # t-SNE page: optional helper embedding + scatter (StreamlitApp also runs t-SNE inline with Plotly).
+# Kept for reuse; main app path uses the same encode_sequence + MLP hidden features.
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
@@ -21,6 +22,7 @@ def tsne_visualization(sequences, model):
 
     embeddings = np.vstack(embeddings)
 
+    # Perplexity must be < n_samples; cap at 30 for stability on small sets.
     perplexity = min(30, len(sequences) - 1)
     if perplexity < 2:
         st.warning("Need at least 2 sequences for visualization.")

@@ -1,3 +1,4 @@
+# Merge AMP / non-AMP FASTA files into one labeled CSV for training or app Data/.
 import pandas as pd
 from Bio import SeqIO
 from pathlib import Path

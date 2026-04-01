@@ -1,3 +1,4 @@
+# Filter FASTA to canonical amino acids and length bounds; emit FASTA + CSV.
 from Bio import SeqIO
 import pandas as pd
 

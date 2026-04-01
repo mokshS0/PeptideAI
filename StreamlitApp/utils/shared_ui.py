@@ -18,11 +18,12 @@ def predicted_confidence(row: Dict) -> Optional[float]:
         return None
     if pred == "AMP":
         return p_amp
-    # Convert AMP probability into confidence for the predicted class.
+    # Non-AMP: use complement so “confidence” matches the displayed class.
     return 1.0 - p_amp
 
 
 def format_conf_percent(conf_prob: float, digits: int = 1) -> str:
+    # Probability in [0,1] -> percent string for UI / exports.
     return f"{round(conf_prob * 100, digits)}%"
 
 
@@ -99,6 +100,7 @@ def mutation_heatmap_html(original: str, final: str) -> str:
 
 
 def mutation_diff_table(original: str, final: str) -> List[Dict]:
+    # Side-by-side per-position rows for the optimizer diff expander.
     orig = original or ""
     fin = final or ""
     max_len = max(len(orig), len(fin))
@@ -118,6 +120,7 @@ def mutation_diff_table(original: str, final: str) -> List[Dict]:
 
 
 def _ideal_distance_to_interval(value: float, low: float, high: float) -> float:
+    # Zero if inside [low, high]; else distance to nearest bound (hydrophobic “ideal band”).
     if low <= value <= high:
         return 0.0
     if value < low:
@@ -172,6 +175,7 @@ def optimization_summary(orig_seq: str, orig_conf: float, final_seq: str, final_
 
 
 def sequence_length_warning(seq: str) -> Optional[str]:
+    # Soft guardrails for typical AMP length; model itself has no hard cutoff.
     if not seq:
         return None
     n = len(seq)
@@ -312,6 +316,7 @@ def build_analysis_summary_text(
     props: Dict,
     analysis_lines: List[str],
 ) -> str:
+    # Flat text blob for Analyze page TXT download.
     length = props.get("Length", len(sequence))
     charge = props.get("Net Charge (approx.)", props.get("Net charge", 0))
     hydro = props.get("Hydrophobic Fraction", props.get("Hydrophobic", 0))

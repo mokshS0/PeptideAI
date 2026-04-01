@@ -1,4 +1,5 @@
 # Heuristic mutation search used by the Optimize page.
+# Each round scores single-site mutants with predict_amp; accepts the best gain above threshold.
 import random
 from utils.predict import predict_amp
 

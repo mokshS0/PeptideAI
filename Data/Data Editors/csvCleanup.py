@@ -1,3 +1,4 @@
+# Post-process a combined CSV: drop index noise and duplicate sequences.
 import pandas as pd
 
 # Load data

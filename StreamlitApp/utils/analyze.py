@@ -10,6 +10,7 @@ def aa_composition(sequence):
 
 def compute_properties(sequence):
     # Compute simple length, mass, hydrophobicity, and net-charge signals.
+    # Hydrophobic fraction uses AILMFWYV; charge = K+R+H minus D+E (rough heuristic).
     aa_weights = {'A': 89.1, 'R': 174.2, 'N': 132.1, 'D': 133.1, 'C': 121.2,
                   'E': 147.1, 'Q': 146.2, 'G': 75.1, 'H': 155.2, 'I': 131.2,
                   'L': 131.2, 'K': 146.2, 'M': 149.2, 'F': 165.2, 'P': 115.1,
